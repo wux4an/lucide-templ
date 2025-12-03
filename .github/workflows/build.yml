@@ -1,0 +1,50 @@
+name: Build CI
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - "**"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.3"
+      - name: Build main branch
+        run: |
+          go install
+          go build .
+          ./lucide-templ
+          go tool templ generate view
+          rm -rf ./build/icons/*.templ
+          cp README.md ./build/
+          cp LICENSE ./build/
+
+      - name: Publish build/ to main branch
+        run: |
+          cd build
+
+          if [ ! -d .git ]; then
+            git init
+            git checkout -b main
+            git config user.name "github-actions"
+            git config user.email "github-actions@github.com"
+            git remote add origin https://x-access-token:${GITHUB_TOKEN}@github.com/wuX4an/lucide-templ.git
+          else
+            git checkout main
+          fi
+
+          COMMIT_DATE=$(date -u +"%Y:%m:%d:%H:%M")
+
+          git add .
+          git commit -m "UTC: $COMMIT_DATE"
+
+          # Push normal sin forzar
+          git push origin main
+
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
